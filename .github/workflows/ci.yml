@@ -1,0 +1,189 @@
+name: "CI - Test, Lint & Build"
+
+on:
+  push:
+    branches: [ "main", "master", "develop", "claude/*" ]
+  pull_request:
+    branches: [ "main", "master", "develop" ]
+
+jobs:
+  lint:
+    name: Super Linter
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+      statuses: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Super-Linter
+      uses: super-linter/super-linter@v5
+      env:
+        VALIDATE_ALL_CODEBASE: false
+        DEFAULT_BRANCH: main
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VALIDATE_JAVASCRIPT_ES: true
+        VALIDATE_TYPESCRIPT_ES: true
+        VALIDATE_CSS: true
+        VALIDATE_HTML: true
+        VALIDATE_JSON: true
+        VALIDATE_MARKDOWN: true
+        LINTER_RULES_PATH: /
+        JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.cjs
+        TYPESCRIPT_ES_CONFIG_FILE: .eslintrc.cjs
+        FILTER_REGEX_EXCLUDE: '.*/(node_modules|.svelte-kit|build|dist)/.*'
+
+  test:
+    name: Unit Tests & Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run type checking
+      run: npm run check
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run tests with coverage
+      run: npm run test:coverage
+
+    - name: Check coverage thresholds
+      run: |
+        if [ ! -f coverage/coverage-summary.json ]; then
+          echo "Coverage report not found!"
+          exit 1
+        fi
+
+        # Extract coverage percentages
+        LINES=$(jq '.total.lines.pct' coverage/coverage-summary.json)
+        STATEMENTS=$(jq '.total.statements.pct' coverage/coverage-summary.json)
+        FUNCTIONS=$(jq '.total.functions.pct' coverage/coverage-summary.json)
+        BRANCHES=$(jq '.total.branches.pct' coverage/coverage-summary.json)
+
+        echo "Coverage Results:"
+        echo "Lines: $LINES%"
+        echo "Statements: $STATEMENTS%"
+        echo "Functions: $FUNCTIONS%"
+        echo "Branches: $BRANCHES%"
+
+        # Check if coverage meets 70% threshold
+        THRESHOLD=70
+        FAILED=0
+
+        if (( $(echo "$LINES < $THRESHOLD" | bc -l) )); then
+          echo "❌ Lines coverage ($LINES%) is below threshold ($THRESHOLD%)"
+          FAILED=1
+        fi
+
+        if (( $(echo "$STATEMENTS < $THRESHOLD" | bc -l) )); then
+          echo "❌ Statements coverage ($STATEMENTS%) is below threshold ($THRESHOLD%)"
+          FAILED=1
+        fi
+
+        if (( $(echo "$FUNCTIONS < $THRESHOLD" | bc -l) )); then
+          echo "❌ Functions coverage ($FUNCTIONS%) is below threshold ($THRESHOLD%)"
+          FAILED=1
+        fi
+
+        if (( $(echo "$BRANCHES < $THRESHOLD" | bc -l) )); then
+          echo "❌ Branches coverage ($BRANCHES%) is below threshold ($THRESHOLD%)"
+          FAILED=1
+        fi
+
+        if [ $FAILED -eq 1 ]; then
+          echo "Coverage check failed!"
+          exit 1
+        fi
+
+        echo "✅ All coverage thresholds met!"
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        files: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-fixyourish
+        fail_ci_if_error: false
+
+    - name: Upload coverage artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: coverage/
+
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+
+    - name: Check build artifacts
+      run: |
+        if [ ! -d ".svelte-kit/output" ]; then
+          echo "Build output not found!"
+          exit 1
+        fi
+        echo "✅ Build completed successfully!"
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-output
+        path: .svelte-kit/output/
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [lint, test, build]
+    if: always()
+
+    steps:
+    - name: Check job results
+      run: |
+        echo "Lint: ${{ needs.lint.result }}"
+        echo "Test: ${{ needs.test.result }}"
+        echo "Build: ${{ needs.build.result }}"
+
+        if [ "${{ needs.lint.result }}" != "success" ] || \
+           [ "${{ needs.test.result }}" != "success" ] || \
+           [ "${{ needs.build.result }}" != "success" ]; then
+          echo "❌ Pipeline failed - Security or quality checks did not pass"
+          exit 1
+        fi
+
+        echo "✅ All checks passed!"
