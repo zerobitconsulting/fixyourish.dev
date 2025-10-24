@@ -1,28 +1,92 @@
-# Create T3 App
+# FixYour-ish
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+A sleek, modern platform for identifying website issues and discovering open source bug bounty opportunities.
 
-## What's next? How do I make an app with this?
+## Features
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+- **Find Issues**: Scan and identify security vulnerabilities, performance issues, and bugs in your website
+- **Bug Bounties**: Browse open source bug bounty programs and earn rewards
+- **Get Fixed**: Access detailed remediation guides and best practices
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Tech Stack
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+- **SvelteKit** - Modern, fast web framework
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first CSS with custom animations
+- **Vite** - Lightning-fast build tool
 
-## Learn More
+## Design Features
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+- Dark theme with vibrant gradients (purple, cyan, pink)
+- Smooth animations and transitions
+- Glowing effects and shimmer animations
+- Floating elements and pulsing background orbs
+- Responsive design for all devices
+- Interactive search functionality
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+## Getting Started
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+### Install dependencies
 
-## How do I deploy this?
+```bash
+bun install
+```
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+### Development
+
+```bash
+bun run dev
+```
+
+Visit `http://localhost:5173` to see your app.
+
+### Build
+
+```bash
+bun run build
+```
+
+### Preview production build
+
+```bash
+bun run preview
+```
+
+### Check for type errors
+
+```bash
+bun run check
+```
+
+## Project Structure
+
+```
+src/
+  routes/
+    +layout.svelte      # Main layout with CSS imports
+    +page.svelte        # Landing page with bug bounty search
+  app.html              # HTML template
+  app.css               # Global styles and Tailwind config
+```
+
+## Customization
+
+### Tailwind Theme
+
+Custom animations are defined in `tailwind.config.ts`:
+- `gradient` - Animated gradient backgrounds
+- `float` - Floating animation for elements
+- `pulse-slow` - Slow pulsing effect
+- `shimmer` - Shimmer effect on hover
+
+### Colors
+
+Primary color scheme:
+- Purple (`#8B5CF6`) - Main brand color
+- Cyan (`#06B6D4`) - Accent color
+- Pink (`#EC4899`) - Highlight color
+- Slate (`#1E293B`, `#0F172A`) - Dark backgrounds
+
+## License
+
+Private
