@@ -23,7 +23,7 @@ jobs:
         fetch-depth: 0
 
     - name: Super-Linter
-      uses: super-linter/super-linter@v5
+      uses: super-linter/super-linter@v7
       env:
         VALIDATE_ALL_CODEBASE: false
         DEFAULT_BRANCH: main
@@ -34,9 +34,6 @@ jobs:
         VALIDATE_HTML: true
         VALIDATE_JSON: true
         VALIDATE_MARKDOWN: true
-        LINTER_RULES_PATH: /
-        JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.cjs
-        TYPESCRIPT_ES_CONFIG_FILE: .eslintrc.cjs
         FILTER_REGEX_EXCLUDE: '.*/(node_modules|.svelte-kit|build|dist)/.*'
 
   test:
@@ -47,23 +44,22 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
       with:
-        node-version: '20'
-        cache: 'npm'
+        bun-version: latest
 
     - name: Install dependencies
-      run: npm ci
+      run: bun install --frozen-lockfile
 
     - name: Run type checking
-      run: npm run check
+      run: bun run check
 
     - name: Run linting
-      run: npm run lint
+      run: bun run lint
 
     - name: Run tests with coverage
-      run: npm run test:coverage
+      run: bun run test:coverage
 
     - name: Check coverage thresholds
       run: |
@@ -72,41 +68,26 @@ jobs:
           exit 1
         fi
 
-        # Extract coverage percentages
         LINES=$(jq '.total.lines.pct' coverage/coverage-summary.json)
         STATEMENTS=$(jq '.total.statements.pct' coverage/coverage-summary.json)
         FUNCTIONS=$(jq '.total.functions.pct' coverage/coverage-summary.json)
         BRANCHES=$(jq '.total.branches.pct' coverage/coverage-summary.json)
 
         echo "Coverage Results:"
-        echo "Lines: $LINES%"
-        echo "Statements: $STATEMENTS%"
-        echo "Functions: $FUNCTIONS%"
-        echo "Branches: $BRANCHES%"
+        echo "  Lines:      $LINES%"
+        echo "  Statements: $STATEMENTS%"
+        echo "  Functions:  $FUNCTIONS%"
+        echo "  Branches:   $BRANCHES%"
 
-        # Check if coverage meets 70% threshold
         THRESHOLD=70
         FAILED=0
 
-        if (( $(echo "$LINES < $THRESHOLD" | bc -l) )); then
-          echo "❌ Lines coverage ($LINES%) is below threshold ($THRESHOLD%)"
-          FAILED=1
-        fi
-
-        if (( $(echo "$STATEMENTS < $THRESHOLD" | bc -l) )); then
-          echo "❌ Statements coverage ($STATEMENTS%) is below threshold ($THRESHOLD%)"
-          FAILED=1
-        fi
-
-        if (( $(echo "$FUNCTIONS < $THRESHOLD" | bc -l) )); then
-          echo "❌ Functions coverage ($FUNCTIONS%) is below threshold ($THRESHOLD%)"
-          FAILED=1
-        fi
-
-        if (( $(echo "$BRANCHES < $THRESHOLD" | bc -l) )); then
-          echo "❌ Branches coverage ($BRANCHES%) is below threshold ($THRESHOLD%)"
-          FAILED=1
-        fi
+        for METRIC in "$LINES" "$STATEMENTS" "$FUNCTIONS" "$BRANCHES"; do
+          if (( $(echo "$METRIC < $THRESHOLD" | bc -l) )); then
+            echo "❌ Coverage ($METRIC%) is below threshold ($THRESHOLD%)"
+            FAILED=1
+          fi
+        done
 
         if [ $FAILED -eq 1 ]; then
           echo "Coverage check failed!"
@@ -116,7 +97,7 @@ jobs:
         echo "✅ All coverage thresholds met!"
 
     - name: Upload coverage reports
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       if: always()
       with:
         files: ./coverage/lcov.info
@@ -140,17 +121,16 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
       with:
-        node-version: '20'
-        cache: 'npm'
+        bun-version: latest
 
     - name: Install dependencies
-      run: npm ci
+      run: bun install --frozen-lockfile
 
     - name: Build application
-      run: npm run build
+      run: bun run build
 
     - name: Check build artifacts
       run: |
@@ -175,14 +155,14 @@ jobs:
     steps:
     - name: Check job results
       run: |
-        echo "Lint: ${{ needs.lint.result }}"
-        echo "Test: ${{ needs.test.result }}"
+        echo "Lint:  ${{ needs.lint.result }}"
+        echo "Test:  ${{ needs.test.result }}"
         echo "Build: ${{ needs.build.result }}"
 
         if [ "${{ needs.lint.result }}" != "success" ] || \
            [ "${{ needs.test.result }}" != "success" ] || \
            [ "${{ needs.build.result }}" != "success" ]; then
-          echo "❌ Pipeline failed - Security or quality checks did not pass"
+          echo "❌ Pipeline failed - checks did not pass"
           exit 1
         fi
 

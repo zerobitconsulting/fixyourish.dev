@@ -40,7 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# Alternative lock files (keep package-lock.json for CI/CD)
+# Alternative lock files (keep bun.lockb for CI/CD)
 yarn.lock
 pnpm-lock.yaml
-bun.lockb
+package-lock.json
