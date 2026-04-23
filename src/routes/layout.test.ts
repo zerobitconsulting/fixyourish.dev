@@ -4,13 +4,7 @@ import Layout from './+layout.svelte';
 
 describe('Layout', () => {
 	it('renders without crashing', () => {
-		const { container } = render(Layout, { props: { data: {} } });
+		const { container } = render(Layout);
 		expect(container).toBeTruthy();
-	});
-
-	it('has slot element', () => {
-		const { container } = render(Layout, { props: { data: {} } });
-		// Layout should render child content via slot
-		expect(container.querySelector('slot')).toBeDefined();
 	});
 });

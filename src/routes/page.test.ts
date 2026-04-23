@@ -1,9 +1,10 @@
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen } from '@testing-library/svelte';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import Page from './+page.svelte';
 
 describe('Landing Page', () => {
-	it('renders the page title with "Fix Your"', () => {
+	it('renders the page title', () => {
 		render(Page);
 		expect(screen.getByText('Fix Your', { exact: false })).toBeInTheDocument();
 	});
@@ -22,8 +23,9 @@ describe('Landing Page', () => {
 
 	it('renders the search input', () => {
 		render(Page);
-		const searchInput = screen.getByPlaceholderText(/Search by project, title, or severity/i);
-		expect(searchInput).toBeInTheDocument();
+		expect(
+			screen.getByPlaceholderText(/Search by project, title, or severity/i)
+		).toBeInTheDocument();
 	});
 
 	it('displays all bug bounties by default', () => {
@@ -33,40 +35,45 @@ describe('Landing Page', () => {
 		expect(screen.getByText('CSRF token validation bypass')).toBeInTheDocument();
 	});
 
-	it('filters bug bounties based on search query', async () => {
+	it('filters bug bounties on search input', async () => {
+		const user = userEvent.setup();
 		render(Page);
-		const searchInput = screen.getByPlaceholderText(/Search by project, title, or severity/i);
+		const input = screen.getByPlaceholderText(/Search by project, title, or severity/i);
 
-		await fireEvent.input(searchInput, { target: { value: 'XSS' } });
+		await user.type(input, 'XSS');
 
 		expect(screen.getByText('XSS vulnerability in user profile page')).toBeInTheDocument();
 		expect(screen.queryByText('SQL injection in search endpoint')).not.toBeInTheDocument();
 	});
 
-	it('shows no results message when search has no matches', async () => {
+	it('shows empty state when search has no matches', async () => {
+		const user = userEvent.setup();
 		render(Page);
-		const searchInput = screen.getByPlaceholderText(/Search by project, title, or severity/i);
+		const input = screen.getByPlaceholderText(/Search by project, title, or severity/i);
 
-		await fireEvent.input(searchInput, { target: { value: 'nonexistent' } });
+		await user.type(input, 'nonexistent_xyz');
 
 		expect(screen.getByText('No bug bounties found')).toBeInTheDocument();
 	});
 
 	it('filters by severity level', async () => {
+		const user = userEvent.setup();
 		render(Page);
-		const searchInput = screen.getByPlaceholderText(/Search by project, title, or severity/i);
+		const input = screen.getByPlaceholderText(/Search by project, title, or severity/i);
 
-		await fireEvent.input(searchInput, { target: { value: 'critical' } });
+		await user.type(input, 'critical');
 
 		expect(screen.getByText('SQL injection in search endpoint')).toBeInTheDocument();
 		expect(screen.getByText('Directory traversal vulnerability')).toBeInTheDocument();
+		expect(screen.queryByText('XSS vulnerability in user profile page')).not.toBeInTheDocument();
 	});
 
 	it('filters by project name', async () => {
+		const user = userEvent.setup();
 		render(Page);
-		const searchInput = screen.getByPlaceholderText(/Search by project, title, or severity/i);
+		const input = screen.getByPlaceholderText(/Search by project, title, or severity/i);
 
-		await fireEvent.input(searchInput, { target: { value: 'ReactDashboard' } });
+		await user.type(input, 'ReactDashboard');
 
 		expect(screen.getByText('SQL injection in search endpoint')).toBeInTheDocument();
 		expect(screen.queryByText('XSS vulnerability in user profile page')).not.toBeInTheDocument();
@@ -79,13 +86,12 @@ describe('Landing Page', () => {
 		expect(screen.getByText('Total Rewards')).toBeInTheDocument();
 	});
 
-	it('has Get Started CTA button', () => {
+	it('renders Get Started buttons', () => {
 		render(Page);
-		const buttons = screen.getAllByText(/Get Started/i);
-		expect(buttons.length).toBeGreaterThan(0);
+		expect(screen.getAllByText(/Get Started/i).length).toBeGreaterThan(0);
 	});
 
-	it('renders footer with copyright', () => {
+	it('renders footer', () => {
 		render(Page);
 		expect(screen.getByText(/FixYour-ish/i)).toBeInTheDocument();
 	});
