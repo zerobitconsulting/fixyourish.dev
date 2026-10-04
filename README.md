@@ -83,17 +83,13 @@ Current coverage: **99.53% statements, 100% functions**
 ### Install dependencies
 
 ```bash
-npm install
-# or
-bun install
+pnpm install
 ```
 
 ### Development
 
 ```bash
-npm run dev
-# or
-bun run dev
+pnpm run dev
 ```
 
 Visit `http://localhost:5173` to see your app.
@@ -102,44 +98,44 @@ Visit `http://localhost:5173` to see your app.
 
 ```bash
 # Run tests
-npm run test
+pnpm run test
 
 # Watch mode
-npm run test:watch
+pnpm run test:watch
 
 # Coverage report
-npm run test:coverage
+pnpm run test:coverage
 
 # Interactive UI
-npm run test:ui
+pnpm run test:ui
 ```
 
 ### Build
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ### Preview production build
 
 ```bash
-npm run preview
+pnpm run preview
 ```
 
 ### Type Checking
 
 ```bash
-npm run check
+pnpm run check
 ```
 
 ### Security Scanning
 
 ```bash
-# Run npm audit
-npm run security:audit
+# Run pnpm audit
+pnpm run security:audit
 
 # Full security scan
-npm run security:scan
+pnpm run security:scan
 ```
 
 ## CI/CD Pipeline
@@ -162,7 +158,7 @@ npm run security:scan
 3. **Security Scan & OWASP** (`.github/workflows/security-scan.yml`)
    - OWASP Dependency Check
    - Secret scanning (TruffleHog)
-   - npm audit enforcement
+   - pnpm audit enforcement
    - Daily scans
 
 ### Build Requirements

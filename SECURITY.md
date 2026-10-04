@@ -41,7 +41,7 @@ This project implements comprehensive security measures aligned with OWASP Top 1
 
 ### 6. Vulnerable and Outdated Components
 - Automated dependency scanning (OWASP Dependency Check)
-- Regular npm audit checks
+- Regular pnpm audit checks
 - Dependabot alerts enabled
 - Minimum security threshold (CVSS 7+)
 
@@ -139,7 +139,7 @@ Please include:
    - Use type-safe validation (Zod)
 
 3. **Keep dependencies updated**
-   - Run `npm audit` regularly
+   - Run `pnpm audit` regularly
    - Update dependencies promptly
    - Review security advisories
 
