@@ -13,54 +13,64 @@ We release patches for security vulnerabilities. Currently supported versions:
 This project implements comprehensive security measures aligned with OWASP Top 10:
 
 ### 1. Broken Access Control
+
 - Strict Content Security Policy (CSP) headers
 - X-Frame-Options to prevent clickjacking
 - Frame-ancestors directive in CSP
 
 ### 2. Cryptographic Failures
+
 - Strict Transport Security (HSTS) enabled
 - Forced HTTPS with upgrade-insecure-requests
 - Secure cookies configuration
 
 ### 3. Injection
+
 - Content Security Policy prevents XSS
 - Input validation and sanitization
 - ESLint security plugin for code analysis
 - X-XSS-Protection headers
 
 ### 4. Insecure Design
+
 - Security-focused code reviews
 - Threat modeling in design phase
 - Principle of least privilege
 
 ### 5. Security Misconfiguration
+
 - Security headers properly configured
 - Automated security scanning (CodeQL)
 - Regular dependency updates
 - No default credentials
 
 ### 6. Vulnerable and Outdated Components
+
 - Automated dependency scanning (OWASP Dependency Check)
 - Regular pnpm audit checks
 - Dependabot alerts enabled
 - Minimum security threshold (CVSS 7+)
 
 ### 7. Identification and Authentication Failures
+
 - Secure session management
 - No sensitive data in URLs
 - Proper authentication flows (when implemented)
 
 ### 8. Software and Data Integrity Failures
+
 - Integrity checks for dependencies
 - SRI (Subresource Integrity) for external resources
 - Code signing for builds
 
 ### 9. Security Logging and Monitoring Failures
+
 - Error tracking and monitoring
 - Security event logging
 - Audit trails for sensitive operations
 
 ### 10. Server-Side Request Forgery (SSRF)
+
 - Input validation for URLs
 - Allowlist for external requests
 - Network segmentation
@@ -68,6 +78,7 @@ This project implements comprehensive security measures aligned with OWASP Top 1
 ## Automated Security Testing
 
 ### CI/CD Pipeline
+
 Our GitHub Actions pipeline includes:
 
 1. **CodeQL Analysis**
@@ -98,6 +109,7 @@ Our GitHub Actions pipeline includes:
 ### Security Headers
 
 All responses include:
+
 - `Content-Security-Policy`
 - `X-Frame-Options: DENY`
 - `X-Content-Type-Options: nosniff`
@@ -111,16 +123,19 @@ All responses include:
 **Please do not report security vulnerabilities through public GitHub issues.**
 
 Instead, please report them via:
+
 1. GitHub Security Advisories (preferred)
 2. Email: security@fixyourish.dev
 
 Please include:
+
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact
 - Suggested fix (if any)
 
 ### What to expect:
+
 - Acknowledgment within 24 hours
 - Initial assessment within 72 hours
 - Regular updates on progress
@@ -156,6 +171,7 @@ Please include:
 ## Compliance
 
 This project aims to comply with:
+
 - OWASP Top 10 (2021)
 - CWE Top 25
 - NIST Cybersecurity Framework

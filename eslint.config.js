@@ -34,6 +34,13 @@ export default [
 		}
 	},
 	{
-		ignores: ['.svelte-kit/**', 'build/**', 'node_modules/**', 'coverage/**']
+		ignores: [
+			'.svelte-kit/**',
+			'.vercel/**',
+			'.omc/**',
+			'build/**',
+			'node_modules/**',
+			'coverage/**'
+		]
 	}
 ];
