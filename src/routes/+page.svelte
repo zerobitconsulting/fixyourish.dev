@@ -1,362 +1,453 @@
 <script lang="ts">
-	interface BugBounty {
-		id: string;
+	import { resolve } from '$app/paths';
+	import type { Attachment } from 'svelte/attachments';
+
+	type Severity = 'crit' | 'high' | 'med' | 'low';
+
+	interface Finding {
 		title: string;
-		project: string;
-		severity: 'low' | 'medium' | 'high' | 'critical';
-		reward: string;
-		status: 'open' | 'claimed' | 'fixed';
+		area: string;
+		severity: Severity;
 	}
 
-	const mockBugBounties: BugBounty[] = [
+	const EARLY_ACCESS_HREF = 'https://github.com/zerobitconsulting/fixyourish.dev';
+
+	const findings: Finding[] = [
+		{ title: 'Open redirect on /login?next=', area: 'security', severity: 'crit' },
+		{ title: 'No Content-Security-Policy header', area: 'security', severity: 'high' },
+		{ title: 'TLS 1.0 still negotiated', area: 'security', severity: 'high' },
+		{ title: 'hero.png ships at 4.2 MB', area: 'perf', severity: 'med' },
+		{ title: '12 images missing alt text', area: 'a11y', severity: 'med' },
+		{ title: 'No meta description on 9 pages', area: 'seo', severity: 'low' }
+	];
+
+	const tickerItems = [
+		'missing CSP',
+		'mixed content',
+		'cookie without HttpOnly',
+		'4.2 MB hero image',
+		'exposed /.git',
+		'render-blocking JS',
+		'contrast 2.1:1',
+		'jQuery 1.12',
+		'open redirect',
+		'no HSTS',
+		'broken links ×31',
+		'unlabeled form field'
+	];
+
+	const steps = [
 		{
-			id: '1',
-			title: 'XSS vulnerability in user profile page',
-			project: 'OpenSourceCMS',
-			severity: 'high',
-			reward: '$500',
-			status: 'open'
+			n: '01',
+			title: 'Point it at a URL',
+			body: 'Drop in a domain. We crawl it the way a curious attacker and an impatient user would, at the same time.'
 		},
 		{
-			id: '2',
-			title: 'SQL injection in search endpoint',
-			project: 'ReactDashboard',
-			severity: 'critical',
-			reward: '$1000',
-			status: 'open'
+			n: '02',
+			title: 'Get a punch list',
+			body: 'Not a 90-page PDF. A ranked list of what is actually wrong, why it matters, and how bad it really is.'
 		},
 		{
-			id: '3',
-			title: 'CSRF token validation bypass',
-			project: 'VueCommerce',
-			severity: 'medium',
-			reward: '$300',
-			status: 'open'
-		},
-		{
-			id: '4',
-			title: 'Broken authentication in API',
-			project: 'NodeAPI',
-			severity: 'high',
-			reward: '$750',
-			status: 'claimed'
-		},
-		{
-			id: '5',
-			title: 'Directory traversal vulnerability',
-			project: 'FileManager',
-			severity: 'critical',
-			reward: '$1200',
-			status: 'open'
+			n: '03',
+			title: 'Fix it. Check it off.',
+			body: 'Every finding ships with a concrete fix (header, config, or code) and a re-scan to prove it is gone.'
 		}
 	];
 
-	let searchQuery = $state('');
-	let visible = $state(false);
-
-	const filteredBounties = $derived(
-		searchQuery.trim() === ''
-			? mockBugBounties
-			: mockBugBounties.filter(
-					(b) =>
-						b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						b.project.toLowerCase().includes(searchQuery.toLowerCase()) ||
-						b.severity.toLowerCase().includes(searchQuery.toLowerCase())
-				)
-	);
-
-	$effect(() => {
-		visible = true;
-	});
-
-	function getSeverityColor(severity: string): string {
-		switch (severity) {
-			case 'critical':
-				return 'from-red-500 to-red-700 border-red-400';
-			case 'high':
-				return 'from-orange-500 to-orange-700 border-orange-400';
-			case 'medium':
-				return 'from-yellow-500 to-yellow-700 border-yellow-400';
-			case 'low':
-				return 'from-green-500 to-green-700 border-green-400';
-			default:
-				return 'from-gray-500 to-gray-700 border-gray-400';
+	const checks = [
+		{
+			title: 'Security',
+			items: [
+				'Security headers & CSP',
+				'TLS & cookie flags',
+				'Exposed files & secrets',
+				'Outdated libraries'
+			]
+		},
+		{
+			title: 'Performance',
+			items: ['Oversized assets', 'Render-blocking resources', 'Cache headers', 'Core Web Vitals']
+		},
+		{
+			title: 'Accessibility',
+			items: ['Alt text & labels', 'Color contrast', 'Focus order', 'Landmarks & headings']
+		},
+		{
+			title: 'Hygiene',
+			items: ['Broken links', 'Meta & social tags', 'Mixed content', 'Sitemap & robots']
 		}
-	}
+	];
 
-	function getStatusColor(status: string): string {
-		switch (status) {
-			case 'open':
-				return 'bg-gradient-to-r from-blue-500 to-cyan-500';
-			case 'claimed':
-				return 'bg-gradient-to-r from-purple-500 to-pink-500';
-			case 'fixed':
-				return 'bg-gradient-to-r from-green-500 to-emerald-500';
-			default:
-				return 'bg-gradient-to-r from-gray-500 to-gray-600';
-		}
-	}
+	const severityStyles: Record<Severity, string> = {
+		crit: 'bg-pen text-paper',
+		high: 'border border-pen text-pen',
+		med: 'border border-ink/40 text-ink-soft',
+		low: 'border border-ink/20 text-ink-soft/80'
+	};
+
+	const STRIKE_START = 1.4;
+	const STRIKE_GAP = 0.6;
+	const doneAt = STRIKE_START + findings.length * STRIKE_GAP;
+
+	const year = new Date().getFullYear();
+
+	/** Fade sections up as they scroll into view; content stays visible without JS. */
+	const reveal: Attachment<HTMLElement> = (node) => {
+		if (typeof IntersectionObserver === 'undefined') return;
+		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+		node.style.opacity = '0';
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (!entry.isIntersecting) return;
+				node.style.opacity = '';
+				node.classList.add('animate-rise');
+				observer.disconnect();
+			},
+			{ rootMargin: '0px 0px -10% 0px' }
+		);
+		observer.observe(node);
+		return () => observer.disconnect();
+	};
 </script>
 
 <svelte:head>
-	<title>FixYour-ish - Find & Fix Issues in Your Site</title>
+	<title>FixYour-ish · Your site works. -ish.</title>
 	<meta
 		name="description"
-		content="Discover issues that need fixing on your site and find open source bug bounty opportunities"
+		content="FixYour-ish scans your site for security, performance, and accessibility issues and hands you a ranked punch list of fixes."
 	/>
 </svelte:head>
 
-<main class="min-h-screen overflow-hidden bg-slate-900">
-	<!-- Animated Background -->
-	<div class="pointer-events-none fixed inset-0 overflow-hidden">
-		<div
-			class="absolute -right-40 -top-40 h-80 w-80 animate-pulse-slow rounded-full bg-purple-500/20 blur-3xl"
-		></div>
-		<div
-			class="absolute left-1/2 top-1/2 h-80 w-80 animate-pulse-slow rounded-full bg-cyan-500/20 blur-3xl"
-			style="animation-delay: 2s;"
-		></div>
-		<div
-			class="absolute bottom-20 right-1/3 h-80 w-80 animate-pulse-slow rounded-full bg-pink-500/20 blur-3xl"
-			style="animation-delay: 4s;"
-		></div>
-	</div>
-
-	<!-- Hero Section -->
-	<div class="relative">
-		<div
-			class="absolute inset-0 bg-gradient-to-br from-purple-600/30 via-pink-600/20 to-cyan-600/30 backdrop-blur-sm"
-		></div>
-		<div class="container relative mx-auto px-4 py-24 md:py-32">
-			<div
-				class="mx-auto max-w-5xl transform text-center transition-all duration-1000"
-				class:opacity-0={!visible}
-				class:translate-y-10={!visible}
-				class:opacity-100={visible}
-				class:translate-y-0={visible}
-			>
-				<h1
-					class="animate-float glow text-gradient mb-6 font-black"
-					style="font-size: clamp(3rem, 10vw, 6rem); font-family: system-ui, -apple-system, sans-serif;"
+<div class="min-h-screen overflow-x-clip paper-texture">
+	<!-- Nav -->
+	<header class="border-b border-rule">
+		<nav class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 md:px-8">
+			<a href={resolve('/')} class="font-display text-2xl tracking-tight">
+				fixyour<span class="text-pen italic">-ish</span>
+			</a>
+			<div class="flex items-center gap-6 text-xs tracking-widest uppercase">
+				<a href="#how" class="hidden hover:text-pen sm:inline">How it works</a>
+				<a href="#checks" class="hidden hover:text-pen sm:inline">What we check</a>
+				<a
+					href="#early-access"
+					class="border border-ink px-3 py-2 transition-colors hover:bg-ink hover:text-paper"
 				>
-					Fix Your<span class="text-yellow-400">-ish</span>
-				</h1>
-				<p class="mb-6 text-2xl font-bold tracking-wide text-cyan-300 md:text-3xl">
-					Identify issues that need fixing on your site
-				</p>
-				<p class="mx-auto max-w-3xl text-lg leading-relaxed text-purple-200 md:text-xl">
-					Discover vulnerabilities, earn bug bounties, and contribute to open source security with
-					style
-				</p>
-				<button
-					class="card-glow mt-8 transform rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-4 text-xl font-bold shadow-2xl transition-all duration-300 hover:scale-110 hover:from-purple-500 hover:to-pink-500"
-				>
-					Get Started Now
-				</button>
+					Early access
+				</a>
 			</div>
-		</div>
-	</div>
+		</nav>
+	</header>
 
-	<!-- Features Section -->
-	<div class="container relative mx-auto px-4 py-16">
-		<div class="mb-20 grid gap-8 md:grid-cols-3">
-			{#each [
-				{ icon: '🔍', title: 'Find Issues', desc: 'Scan and identify security vulnerabilities, performance issues, and bugs with advanced detection algorithms.' },
-				{ icon: '💰', title: 'Bug Bounties', desc: 'Browse open source bug bounty programs and earn rewards by finding and reporting security issues.' },
-				{ icon: '🛠️', title: 'Get Fixed', desc: 'Access detailed remediation guides and best practices to fix identified issues quickly and securely.' }
-			] as feature, i}
-				<div
-					class="group relative transform rounded-2xl border border-purple-500/30 bg-gradient-to-br from-slate-800/80 to-slate-900/80 p-8 backdrop-blur-lg transition-all duration-500 hover:scale-105 hover:border-cyan-400/60 hover:shadow-2xl hover:shadow-purple-500/50"
-					style="animation-delay: {i * 200}ms;"
-				>
-					<div
-						class="absolute inset-0 overflow-hidden rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-					>
-						<div
-							class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-shimmer"
-						></div>
-					</div>
-					<div class="relative">
-						<div class="animate-float mb-6 text-6xl" style="animation-delay: {i * 300}ms;">
-							{feature.icon}
-						</div>
-						<h3 class="mb-4 text-2xl font-bold text-cyan-300">{feature.title}</h3>
-						<p class="leading-relaxed text-gray-300">{feature.desc}</p>
-					</div>
-				</div>
-			{/each}
-		</div>
-
-		<!-- Bug Bounty Search Section -->
-		<div class="mx-auto max-w-7xl">
-			<div
-				class="rounded-3xl border border-purple-500/40 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-10 shadow-2xl backdrop-blur-xl"
-			>
-				<h2 class="text-gradient mb-6 text-4xl font-bold md:text-5xl">
-					Open Source Bug Bounty Programs
-				</h2>
-				<p class="mb-8 text-lg leading-relaxed text-gray-300">
-					Search through available bug bounty opportunities in open source projects. Find
-					vulnerabilities, help secure the ecosystem, and earn rewards.
+	<main>
+		<!-- Hero -->
+		<section
+			class="mx-auto grid max-w-6xl items-center gap-14 px-5 pt-16 pb-20 md:px-8 lg:grid-cols-[1.15fr_1fr] lg:pt-24 lg:pb-28"
+		>
+			<div>
+				<p class="animate-rise text-xs tracking-[0.25em] text-ink-soft uppercase">
+					// a punch list for your website
 				</p>
 
-				<!-- Search Bar -->
-				<div class="group relative mb-10">
-					<input
-						type="text"
-						placeholder="Search by project, title, or severity..."
-						bind:value={searchQuery}
-						class="w-full rounded-2xl border-2 border-purple-500/50 bg-slate-800/80 px-8 py-6 text-lg text-white placeholder-gray-400 transition-all focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-400/30 group-hover:border-purple-400"
-					/>
-					<div
-						class="absolute right-6 top-1/2 -translate-y-1/2 text-purple-400 transition-colors group-focus-within:text-cyan-400"
-					>
-						<svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<h1
+					class="mt-6 animate-rise font-display text-[clamp(3.4rem,9vw,7.25rem)] leading-[0.92] tracking-tight"
+					style="animation-delay: 120ms"
+				>
+					Your site works.
+					<span class="relative inline-block text-pen italic">
+						-ish.
+						<svg
+							class="absolute -bottom-3 left-0 w-full overflow-visible"
+							viewBox="0 0 200 24"
+							fill="none"
+							aria-hidden="true"
+						>
 							<path
+								class="animate-draw"
+								style="stroke-dasharray: 1; animation-delay: 900ms"
+								pathLength="1"
+								d="M4 15 C 40 6, 90 20, 130 11 S 185 8, 196 14"
+								stroke="currentColor"
+								stroke-width="5"
 								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width={2}
-								d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 							/>
 						</svg>
-					</div>
-				</div>
+					</span>
+				</h1>
 
-				<!-- Results -->
-				<div class="space-y-6">
-					{#if filteredBounties.length === 0}
-						<div class="py-20 text-center">
-							<p class="text-2xl font-bold text-purple-300">No bug bounties found</p>
-							<p class="mt-3 text-gray-400">Try adjusting your search criteria</p>
-						</div>
-					{:else}
-						{#each filteredBounties as bounty, i}
-							<div
-								class="group transform rounded-2xl border border-purple-500/30 bg-gradient-to-br from-slate-800/60 to-slate-900/60 p-8 backdrop-blur-lg transition-all duration-500 hover:scale-[1.02] hover:border-cyan-400/60 hover:shadow-2xl hover:shadow-cyan-500/30"
-								style="animation: fadeInUp 0.5s ease-out {i * 100}ms both;"
-							>
-								<div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-									<div class="flex-1">
-										<h3
-											class="mb-3 text-2xl font-bold text-white transition-colors group-hover:text-cyan-300"
-										>
-											{bounty.title}
-										</h3>
-										<p class="mb-4 text-lg text-gray-300">
-											Project: <span class="font-semibold text-purple-300">{bounty.project}</span>
-										</p>
-										<div class="flex flex-wrap gap-3">
-											<span
-												class="rounded-full border-2 bg-gradient-to-r px-4 py-2 text-sm font-bold shadow-lg {getSeverityColor(bounty.severity)}"
-											>
-												{bounty.severity.toUpperCase()}
-											</span>
-											<span
-												class="rounded-full px-4 py-2 text-sm font-bold shadow-lg {getStatusColor(bounty.status)}"
-											>
-												{bounty.status.charAt(0).toUpperCase() + bounty.status.slice(1)}
-											</span>
-										</div>
-									</div>
-									<div class="flex flex-col items-end gap-4">
-										<div class="text-gradient glow text-4xl font-black">
-											{bounty.reward}
-										</div>
-										<button
-											class="transform rounded-xl px-8 py-3 text-lg font-bold shadow-xl transition-all duration-300 hover:scale-110 {bounty.status ===
-											'open'
-												? 'card-glow bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500'
-												: 'cursor-not-allowed bg-gray-700 text-gray-400'}"
-											disabled={bounty.status !== 'open'}
-										>
-											{bounty.status === 'open' ? 'View Details' : 'Not Available'}
-										</button>
-									</div>
-								</div>
-							</div>
-						{/each}
-					{/if}
-				</div>
-
-				<!-- Stats -->
-				<div class="mt-12 border-t border-purple-500/30 pt-8">
-					<div class="grid grid-cols-2 gap-6 lg:grid-cols-4">
-						{#each [
-							{ value: mockBugBounties.length, label: 'Total Bounties', color: 'text-purple-400' },
-							{ value: mockBugBounties.filter((b) => b.status === 'open').length, label: 'Open', color: 'text-green-400' },
-							{ value: mockBugBounties.filter((b) => b.severity === 'high' || b.severity === 'critical').length, label: 'High Priority', color: 'text-orange-400' },
-							{ value: '$3,750', label: 'Total Rewards', color: 'text-cyan-400' }
-						] as stat}
-							<div
-								class="rounded-2xl border border-purple-500/20 bg-slate-800/50 p-6 text-center transition-all duration-300 hover:scale-105 hover:border-cyan-400/40"
-							>
-								<div class="glow mb-2 text-4xl font-black {stat.color}">{stat.value}</div>
-								<div class="text-sm font-semibold uppercase tracking-wider text-gray-400">
-									{stat.label}
-								</div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- CTA Section -->
-		<div class="mt-20 text-center">
-			<div
-				class="card-glow relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-600 p-16 shadow-2xl"
-			>
-				<div class="absolute inset-0 overflow-hidden">
-					<div
-						class="absolute left-1/4 top-0 h-64 w-64 animate-pulse-slow rounded-full bg-white/10 blur-3xl"
-					></div>
-					<div
-						class="absolute bottom-0 right-1/4 h-64 w-64 animate-pulse-slow rounded-full bg-white/10 blur-3xl"
-						style="animation-delay: 2s;"
-					></div>
-				</div>
-				<div class="relative">
-					<h2 class="glow mb-6 text-4xl font-black text-white md:text-5xl">
-						Ready to secure your site?
-					</h2>
-					<p class="mx-auto mb-10 max-w-3xl text-xl leading-relaxed text-white/90">
-						Start identifying issues, contribute to open source security, and make the web a safer
-						place with cutting-edge tools.
-					</p>
-					<button
-						class="transform rounded-full bg-white px-10 py-5 text-xl font-black text-purple-600 shadow-2xl transition-all duration-300 hover:scale-110 hover:bg-gray-100"
+				<p
+					class="mt-10 max-w-xl animate-rise text-[15px] leading-relaxed text-ink-soft"
+					style="animation-delay: 260ms"
+				>
+					FixYour-ish finds the <span class="marker text-ink"
+						>security, performance, and accessibility</span
 					>
-						Get Started Free
-					</button>
+					issues hiding in your site, then hands you the fix. No 90-page PDF. No dashboard you'll never
+					open again.
+				</p>
+
+				<div
+					class="mt-10 flex animate-rise flex-wrap items-center gap-4"
+					style="animation-delay: 380ms"
+				>
+					<a
+						href="#early-access"
+						class="group inline-flex items-center gap-3 bg-ink px-6 py-4 text-sm font-medium tracking-wide text-paper shadow-[5px_5px_0_var(--color-pen)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0_var(--color-pen)]"
+					>
+						Get early access
+						<span aria-hidden="true" class="transition-transform group-hover:translate-x-1">→</span>
+					</a>
+					<a
+						href="#how"
+						class="text-sm underline decoration-rule decoration-2 underline-offset-[6px] hover:decoration-pen"
+					>
+						See how it works
+					</a>
 				</div>
 			</div>
-		</div>
-	</div>
 
-	<!-- Footer -->
-	<footer
-		class="relative mt-24 border-t border-purple-500/30 bg-slate-950/80 py-12 backdrop-blur-lg"
-	>
-		<div class="container mx-auto px-4 text-center">
-			<p class="mb-3 text-lg text-gray-300">
-				&copy; 2024 FixYour-ish. Making the web more secure, one fix at a time.
-			</p>
-			<p class="font-semibold text-purple-400">
-				Open source bug bounties &bull; Security research &bull; Community driven
-			</p>
+			<!-- Sample report card -->
+			<div class="relative animate-rise" style="animation-delay: 450ms">
+				<div
+					class="relative rotate-[1.2deg] border border-ink/80 bg-[#fbf9f4] shadow-[10px_10px_0_var(--color-ink)]"
+				>
+					<div
+						class="flex items-center justify-between border-b border-dashed border-ink/40 px-5 py-3 text-[11px] tracking-widest text-ink-soft uppercase"
+					>
+						<span>Sample report</span>
+						<span>example.com</span>
+					</div>
+
+					<ul class="divide-y divide-rule/70 px-5">
+						{#each findings as finding, i (finding.title)}
+							{@const delay = STRIKE_START + i * STRIKE_GAP}
+							<li class="flex items-center gap-3 py-3.5">
+								<span
+									class="relative grid h-4 w-4 shrink-0 place-items-center border border-ink/70"
+									aria-hidden="true"
+								>
+									<svg
+										class="h-3.5 w-3.5 animate-tick text-fixed"
+										style="animation-delay: {delay + 0.35}s"
+										viewBox="0 0 16 16"
+										fill="none"
+									>
+										<path
+											d="M3 8.5 6.5 12 13 4"
+											stroke="currentColor"
+											stroke-width="2.4"
+											stroke-linecap="round"
+										/>
+									</svg>
+								</span>
+								<span class="relative min-w-0 flex-1 truncate text-[13px]">
+									{finding.title}
+									<span
+										class="absolute top-1/2 left-0 h-[2px] w-full origin-left animate-strike bg-pen"
+										style="animation-delay: {delay}s"
+										aria-hidden="true"
+									></span>
+								</span>
+								<span class="hidden text-[10px] tracking-widest text-ink-soft uppercase sm:inline">
+									{finding.area}
+								</span>
+								<span
+									class="w-11 shrink-0 py-0.5 text-center text-[10px] font-semibold tracking-widest uppercase {severityStyles[
+										finding.severity
+									]}"
+								>
+									{finding.severity}
+								</span>
+							</li>
+						{/each}
+					</ul>
+
+					<div
+						class="flex items-end justify-between border-t border-dashed border-ink/40 px-5 py-4"
+					>
+						<div class="text-[11px] tracking-widest text-ink-soft uppercase">Site score</div>
+						<div class="flex items-baseline gap-3 font-display">
+							<span class="relative text-3xl text-ink-soft">
+								41
+								<span
+									class="absolute top-1/2 left-[-4px] h-[2px] w-[calc(100%+8px)] origin-left -rotate-12 animate-strike bg-pen"
+									style="animation-delay: {doneAt}s"
+									aria-hidden="true"
+								></span>
+							</span>
+							<span
+								class="animate-rise text-5xl text-pen italic"
+								style="animation-delay: {doneAt + 0.3}s"
+							>
+								98
+							</span>
+						</div>
+					</div>
+
+					<!-- Stamp -->
+					<div
+						class="pointer-events-none absolute -top-6 -right-4 animate-stamp border-[3px] border-fixed px-3 py-1 font-display text-3xl tracking-wide text-fixed uppercase mix-blend-multiply md:-right-8"
+						style="animation-delay: {doneAt + 0.6}s"
+						aria-hidden="true"
+					>
+						Fixed
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Ticker -->
+		<div
+			class="-rotate-1 border-y-2 border-ink bg-ink py-3 text-paper select-none"
+			aria-label="Common issues we find"
+		>
+			<div class="flex w-max animate-marquee gap-10 text-sm whitespace-nowrap">
+				{#each [0, 1] as copy (copy)}
+					<div class="flex gap-10" aria-hidden={copy === 1}>
+						{#each tickerItems as item (item)}
+							<span class="flex items-center gap-10">
+								<span class="line-through decoration-pen decoration-2">{item}</span>
+								<span class="text-pen">✕</span>
+							</span>
+						{/each}
+					</div>
+				{/each}
+			</div>
+		</div>
+
+		<!-- How it works -->
+		<section id="how" class="mx-auto max-w-6xl scroll-mt-8 px-5 py-24 md:px-8 lg:py-32">
+			<div class="grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+				<div {@attach reveal}>
+					<p class="text-xs tracking-[0.25em] text-pen uppercase">How it works</p>
+					<h2 class="mt-4 font-display text-5xl leading-none md:text-6xl">
+						Three steps.<br /><span class="italic">Zero</span> hand-wringing.
+					</h2>
+				</div>
+
+				<ol class="border-t border-ink">
+					{#each steps as step (step.n)}
+						<li
+							{@attach reveal}
+							class="group grid grid-cols-[auto_1fr] gap-6 border-b border-ink py-8 md:gap-10"
+						>
+							<span
+								class="font-display text-5xl text-rule transition-colors group-hover:text-pen md:text-6xl"
+							>
+								{step.n}
+							</span>
+							<div>
+								<h3 class="text-lg font-semibold">{step.title}</h3>
+								<p class="mt-2 max-w-md text-sm leading-relaxed text-ink-soft">{step.body}</p>
+							</div>
+						</li>
+					{/each}
+				</ol>
+			</div>
+		</section>
+
+		<!-- What we check -->
+		<section id="checks" class="scroll-mt-8 border-y border-rule bg-paper-deep/60">
+			<div class="mx-auto max-w-6xl px-5 py-24 md:px-8 lg:py-28">
+				<div {@attach reveal} class="flex flex-wrap items-end justify-between gap-6">
+					<h2 class="font-display text-5xl leading-none md:text-6xl">
+						What we <span class="text-pen italic">poke at.</span>
+					</h2>
+					<p class="max-w-sm text-sm leading-relaxed text-ink-soft">
+						The boring, important stuff that slips through code review and quietly costs you users,
+						rankings, or a breach disclosure.
+					</p>
+				</div>
+
+				<div class="mt-14 grid gap-px border border-ink bg-ink sm:grid-cols-2 lg:grid-cols-4">
+					{#each checks as check, i (check.title)}
+						<div
+							{@attach reveal}
+							class="bg-paper p-7 transition-colors hover:bg-[#fbf9f4]"
+							style="animation-delay: {i * 90}ms"
+						>
+							<div class="flex items-baseline justify-between">
+								<h3 class="font-display text-3xl">{check.title}</h3>
+								<span class="text-xs text-ink-soft">0{i + 1}</span>
+							</div>
+							<ul class="mt-6 space-y-2.5 text-[13px] text-ink-soft">
+								{#each check.items as item (item)}
+									<li class="flex gap-2.5">
+										<span class="text-pen" aria-hidden="true">→</span>{item}
+									</li>
+								{/each}
+							</ul>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</section>
+
+		<!-- Roadmap: bounties -->
+		<section class="mx-auto max-w-6xl px-5 py-24 md:px-8 lg:py-32">
+			<div
+				{@attach reveal}
+				class="relative grid gap-10 border-2 border-dashed border-ink/50 p-8 md:grid-cols-[auto_1fr] md:p-12"
+			>
+				<span
+					class="absolute -top-3.5 left-8 bg-paper px-3 text-xs tracking-[0.25em] text-pen uppercase"
+				>
+					On the roadmap
+				</span>
+				<div class="font-display text-7xl leading-none text-pen italic md:text-8xl">$</div>
+				<div>
+					<h2 class="font-display text-4xl leading-tight md:text-5xl">
+						Open source, paid to be less <span class="italic">-ish</span>.
+					</h2>
+					<p class="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
+						Next up: a bounty board where open source maintainers post real issues with rewards
+						attached, and researchers get paid to find and fix them, with the same punch-list
+						workflow from report to merged patch.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- CTA -->
+		<section id="early-access" class="scroll-mt-8 bg-ink text-paper">
+			<div
+				class="mx-auto flex max-w-6xl flex-col items-start gap-10 px-5 py-24 md:px-8 lg:flex-row lg:items-end lg:justify-between lg:py-32"
+			>
+				<div {@attach reveal}>
+					<p class="text-xs tracking-[0.25em] text-highlight uppercase">Early access</p>
+					<h2 class="mt-4 font-display text-[clamp(3rem,8vw,6.5rem)] leading-[0.92]">
+						Stop shipping<br /><span class="text-pen italic">-ish.</span>
+					</h2>
+					<p class="mt-6 max-w-md text-sm leading-relaxed text-paper/70">
+						We're onboarding a small batch of sites first. Follow along to be first in line when
+						scans open up.
+					</p>
+				</div>
+				<a
+					{@attach reveal}
+					href={EARLY_ACCESS_HREF}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="group inline-flex shrink-0 items-center gap-3 bg-paper px-7 py-5 text-sm font-medium tracking-wide text-ink shadow-[6px_6px_0_var(--color-pen)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0_var(--color-pen)]"
+				>
+					Follow on GitHub
+					<span aria-hidden="true" class="transition-transform group-hover:translate-x-1">→</span>
+				</a>
+			</div>
+		</section>
+	</main>
+
+	<footer class="border-t border-rule">
+		<div
+			class="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-8 text-xs text-ink-soft sm:flex-row sm:items-center sm:justify-between md:px-8"
+		>
+			<span>
+				&copy; {year}
+				<span class="font-display text-base text-ink"
+					>fixyour<span class="text-pen italic">-ish</span></span
+				>
+			</span>
+			<span>Making the web a little less -ish, one fix at a time.</span>
 		</div>
 	</footer>
-</main>
-
-<style>
-	@keyframes fadeInUp {
-		from {
-			opacity: 0;
-			transform: translateY(30px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-</style>
+</div>

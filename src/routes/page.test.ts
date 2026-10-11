@@ -1,98 +1,112 @@
-import { render, screen } from '@testing-library/svelte';
-import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { render, screen, within } from '@testing-library/svelte';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import Page from './+page.svelte';
 
 describe('Landing Page', () => {
-	it('renders the page title', () => {
-		render(Page);
-		expect(screen.getByText('Fix Your', { exact: false })).toBeInTheDocument();
+	afterEach(() => {
+		vi.unstubAllGlobals();
 	});
 
-	it('renders the hero description', () => {
+	it('renders the hero headline', () => {
 		render(Page);
-		expect(screen.getByText(/Identify issues that need fixing on your site/i)).toBeInTheDocument();
+		const heading = screen.getByRole('heading', { level: 1 });
+		expect(heading).toHaveTextContent(/Your site works\./);
+		expect(heading).toHaveTextContent(/-ish\./);
 	});
 
-	it('renders all three feature cards', () => {
+	it('renders the sample report findings', () => {
 		render(Page);
-		expect(screen.getByText('Find Issues')).toBeInTheDocument();
-		expect(screen.getByText('Bug Bounties')).toBeInTheDocument();
-		expect(screen.getByText('Get Fixed')).toBeInTheDocument();
+		expect(screen.getByText('Sample report')).toBeInTheDocument();
+		expect(screen.getByText('Open redirect on /login?next=')).toBeInTheDocument();
+		expect(screen.getByText('No Content-Security-Policy header')).toBeInTheDocument();
+		expect(screen.getByText('12 images missing alt text')).toBeInTheDocument();
 	});
 
-	it('renders the search input', () => {
+	it('renders the three how-it-works steps', () => {
 		render(Page);
-		expect(
-			screen.getByPlaceholderText(/Search by project, title, or severity/i)
-		).toBeInTheDocument();
+		const section = document.getElementById('how')!;
+		expect(within(section).getAllByRole('listitem')).toHaveLength(3);
+		expect(within(section).getByText('Point it at a URL')).toBeInTheDocument();
+		expect(within(section).getByText('Get a punch list')).toBeInTheDocument();
+		expect(within(section).getByText('Fix it. Check it off.')).toBeInTheDocument();
 	});
 
-	it('displays all bug bounties by default', () => {
+	it('renders every check category', () => {
 		render(Page);
-		expect(screen.getByText('XSS vulnerability in user profile page')).toBeInTheDocument();
-		expect(screen.getByText('SQL injection in search endpoint')).toBeInTheDocument();
-		expect(screen.getByText('CSRF token validation bypass')).toBeInTheDocument();
+		const section = document.getElementById('checks')!;
+		for (const title of ['Security', 'Performance', 'Accessibility', 'Hygiene']) {
+			expect(within(section).getByRole('heading', { name: title })).toBeInTheDocument();
+		}
 	});
 
-	it('filters bug bounties on search input', async () => {
-		const user = userEvent.setup();
+	it('links the hero CTA to the early access section', () => {
 		render(Page);
-		const input = screen.getByPlaceholderText(/Search by project, title, or severity/i);
-
-		await user.type(input, 'XSS');
-
-		expect(screen.getByText('XSS vulnerability in user profile page')).toBeInTheDocument();
-		expect(screen.queryByText('SQL injection in search endpoint')).not.toBeInTheDocument();
+		const cta = screen.getByRole('link', { name: /Get early access/i });
+		expect(cta).toHaveAttribute('href', '#early-access');
+		expect(document.getElementById('early-access')).toBeInTheDocument();
 	});
 
-	it('shows empty state when search has no matches', async () => {
-		const user = userEvent.setup();
+	it('opens the external CTA safely in a new tab', () => {
 		render(Page);
-		const input = screen.getByPlaceholderText(/Search by project, title, or severity/i);
-
-		await user.type(input, 'nonexistent_xyz');
-
-		expect(screen.getByText('No bug bounties found')).toBeInTheDocument();
+		const link = screen.getByRole('link', { name: /Follow on GitHub/i });
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
 	});
 
-	it('filters by severity level', async () => {
-		const user = userEvent.setup();
+	it('hides the duplicated ticker copy from assistive tech', () => {
 		render(Page);
-		const input = screen.getByPlaceholderText(/Search by project, title, or severity/i);
-
-		await user.type(input, 'critical');
-
-		expect(screen.getByText('SQL injection in search endpoint')).toBeInTheDocument();
-		expect(screen.getByText('Directory traversal vulnerability')).toBeInTheDocument();
-		expect(screen.queryByText('XSS vulnerability in user profile page')).not.toBeInTheDocument();
+		const ticker = screen.getByLabelText('Common issues we find');
+		expect(ticker.querySelectorAll('[aria-hidden="true"] > span').length).toBeGreaterThan(0);
 	});
 
-	it('filters by project name', async () => {
-		const user = userEvent.setup();
+	it('renders the footer with the current year', () => {
 		render(Page);
-		const input = screen.getByPlaceholderText(/Search by project, title, or severity/i);
-
-		await user.type(input, 'ReactDashboard');
-
-		expect(screen.getByText('SQL injection in search endpoint')).toBeInTheDocument();
-		expect(screen.queryByText('XSS vulnerability in user profile page')).not.toBeInTheDocument();
+		expect(screen.getByRole('contentinfo')).toHaveTextContent(String(new Date().getFullYear()));
 	});
 
-	it('displays stats dashboard', () => {
+	it('reveals sections when they scroll into view', () => {
+		const observers: { cb: IntersectionObserverCallback; disconnect: () => void }[] = [];
+		vi.stubGlobal(
+			'IntersectionObserver',
+			class {
+				disconnect = vi.fn();
+				observe = vi.fn();
+				constructor(cb: IntersectionObserverCallback) {
+					observers.push({ cb, disconnect: this.disconnect });
+				}
+			}
+		);
+
 		render(Page);
-		expect(screen.getByText('Total Bounties')).toBeInTheDocument();
-		expect(screen.getByText('High Priority')).toBeInTheDocument();
-		expect(screen.getByText('Total Rewards')).toBeInTheDocument();
+		const heading = screen.getByRole('heading', { name: /Three steps/i }).parentElement!;
+		expect(heading.style.opacity).toBe('0');
+
+		const index = observers.length - 1;
+		for (const { cb } of observers) {
+			cb([{ isIntersecting: false } as IntersectionObserverEntry], {} as IntersectionObserver);
+		}
+		expect(heading.style.opacity).toBe('0');
+
+		for (const { cb } of observers) {
+			cb([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+		}
+		expect(heading.style.opacity).toBe('');
+		expect(heading).toHaveClass('animate-rise');
+		expect(observers[index].disconnect).toHaveBeenCalled();
 	});
 
-	it('renders Get Started buttons', () => {
-		render(Page);
-		expect(screen.getAllByText(/Get Started/i).length).toBeGreaterThan(0);
-	});
+	it('skips reveal animations when reduced motion is preferred', () => {
+		vi.stubGlobal(
+			'IntersectionObserver',
+			class {
+				observe() {}
+				disconnect() {}
+			}
+		);
+		vi.stubGlobal('matchMedia', () => ({ matches: true }));
 
-	it('renders footer', () => {
 		render(Page);
-		expect(screen.getByText(/FixYour-ish/i)).toBeInTheDocument();
+		const heading = screen.getByRole('heading', { name: /Three steps/i }).parentElement!;
+		expect(heading.style.opacity).toBe('');
 	});
 });
