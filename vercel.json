@@ -1,6 +1,6 @@
 {
-  "buildCommand": "bun run build",
-  "devCommand": "bun run dev",
-  "installCommand": "bun install",
-  "framework": "sveltekit"
+	"buildCommand": "pnpm run build",
+	"devCommand": "pnpm run dev",
+	"installCommand": "pnpm install --frozen-lockfile",
+	"framework": "sveltekit"
 }

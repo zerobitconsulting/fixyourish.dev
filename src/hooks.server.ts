@@ -1,4 +1,4 @@
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
@@ -9,10 +9,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 
 	// A2: Cryptographic Failures - Force HTTPS
-	response.headers.set(
-		'Strict-Transport-Security',
-		'max-age=31536000; includeSubDomains; preload'
-	);
+	response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 
 	// A3: Injection - XSS Protection
 	response.headers.set('X-XSS-Protection', '1; mode=block');
@@ -28,7 +25,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
 		"form-action 'self'",
-		"upgrade-insecure-requests"
+		'upgrade-insecure-requests'
 	].join('; ');
 
 	response.headers.set('Content-Security-Policy', csp);

@@ -22,19 +22,21 @@ A sleek, modern platform for identifying website issues and discovering open sou
 
 ## Design Features
 
-- Dark theme with vibrant gradients (purple, cyan, pink)
-- Smooth animations and transitions
-- Glowing effects and shimmer animations
-- Floating elements and pulsing background orbs
-- Responsive design for all devices
-- Interactive search functionality
+- "Inspection report" look: warm paper background, ink type, red-pen markup
+- Instrument Serif (display) + IBM Plex Mono (body), self-hosted via `@fontsource` so the CSP stays `font-src 'self'`
+- Animated sample punch list: findings get struck through, checked off, and stamped "Fixed"
+- Scroll-triggered section reveals (Svelte attachment + `IntersectionObserver`)
+- Respects `prefers-reduced-motion`
+- Responsive down to small phones
 
 ## Security
 
 This project implements **OWASP Top 10** security best practices:
 
 ### Security Headers
+
 All responses include comprehensive security headers:
+
 - `Content-Security-Policy` - XSS and injection protection
 - `Strict-Transport-Security` - Force HTTPS
 - `X-Frame-Options: DENY` - Clickjacking protection
@@ -46,23 +48,27 @@ All responses include comprehensive security headers:
 ### Automated Security Scanning
 
 #### CodeQL Analysis
+
 - Runs on every push and pull request
 - Security-and-quality query suite
 - Automated vulnerability detection
 - Weekly scheduled scans
 
 #### OWASP Dependency Check
+
 - Daily vulnerability scans
 - CVSS threshold: 7+ (build fails)
 - Comprehensive dependency analysis
 - Automated reports
 
 #### Secret Scanning
+
 - TruffleHog integration
 - Pre-commit detection
 - Historical commit scanning
 
 #### Super Linter
+
 - Multi-language linting
 - Security-focused ESLint rules
 - Code quality enforcement
@@ -71,6 +77,7 @@ All responses include comprehensive security headers:
 ### Code Coverage Requirements
 
 **Minimum 70% coverage enforced** - Build fails if thresholds not met:
+
 - Lines: 70%
 - Functions: 70%
 - Branches: 70%
@@ -83,17 +90,13 @@ Current coverage: **99.53% statements, 100% functions**
 ### Install dependencies
 
 ```bash
-npm install
-# or
-bun install
+pnpm install
 ```
 
 ### Development
 
 ```bash
-npm run dev
-# or
-bun run dev
+pnpm run dev
 ```
 
 Visit `http://localhost:5173` to see your app.
@@ -102,44 +105,44 @@ Visit `http://localhost:5173` to see your app.
 
 ```bash
 # Run tests
-npm run test
+pnpm run test
 
 # Watch mode
-npm run test:watch
+pnpm run test:watch
 
 # Coverage report
-npm run test:coverage
+pnpm run test:coverage
 
 # Interactive UI
-npm run test:ui
+pnpm run test:ui
 ```
 
 ### Build
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ### Preview production build
 
 ```bash
-npm run preview
+pnpm run preview
 ```
 
 ### Type Checking
 
 ```bash
-npm run check
+pnpm run check
 ```
 
 ### Security Scanning
 
 ```bash
-# Run npm audit
-npm run security:audit
+# Run pnpm audit
+pnpm run security:audit
 
 # Full security scan
-npm run security:scan
+pnpm run security:scan
 ```
 
 ## CI/CD Pipeline
@@ -162,12 +165,13 @@ npm run security:scan
 3. **Security Scan & OWASP** (`.github/workflows/security-scan.yml`)
    - OWASP Dependency Check
    - Secret scanning (TruffleHog)
-   - npm audit enforcement
+   - pnpm audit enforcement
    - Daily scans
 
 ### Build Requirements
 
 All builds must pass:
+
 - ✅ All unit tests passing
 - ✅ 70%+ code coverage
 - ✅ No linting errors
@@ -181,7 +185,7 @@ All builds must pass:
 src/
   routes/
     +layout.svelte         # Main layout with CSS imports
-    +page.svelte           # Landing page with bug bounty search
+    +page.svelte           # Marketing landing page
     layout.test.ts         # Layout component tests
     page.test.ts           # Page component tests
   test/
@@ -201,19 +205,12 @@ src/
 
 ### Tailwind Theme
 
-Custom animations are defined in `tailwind.config.ts`:
-- `gradient` - Animated gradient backgrounds
-- `float` - Floating animation for elements
-- `pulse-slow` - Slow pulsing effect
-- `shimmer` - Shimmer effect on hover
+Theme tokens live in the `@theme` block of `src/app.css` (Tailwind v4, CSS-first config):
 
-### Colors
-
-Primary color scheme:
-- Purple (`#8B5CF6`) - Main brand color
-- Cyan (`#06B6D4`) - Accent color
-- Pink (`#EC4899`) - Highlight color
-- Slate (`#1E293B`, `#0F172A`) - Dark backgrounds
+- Colors: `paper`, `paper-deep`, `ink`, `ink-soft`, `rule`, `pen`, `highlight`, `fixed`
+- Fonts: `font-display` (Instrument Serif), `font-mono` (IBM Plex Mono)
+- Animations: `rise`, `draw`, `strike`, `tick`, `stamp`, `marquee`
+- Utilities: `paper-texture`, `marker`
 
 ## Deployment
 
@@ -223,10 +220,13 @@ Primary color scheme:
 2. Import repository in Vercel
 3. Deploy automatically
 
+Pushes to `main` deploy to production; every other branch and PR gets a preview deployment.
+
 Or use the Vercel CLI:
 
 ```bash
-vercel --prod
+vercel deploy        # preview
+vercel deploy --prod # production
 ```
 
 ### Environment Variables
@@ -242,6 +242,7 @@ No environment variables required for basic deployment.
 5. Submit a pull request
 
 **All PRs must:**
+
 - Pass all GitHub Actions workflows
 - Maintain or improve code coverage
 - Have no security vulnerabilities
@@ -250,6 +251,7 @@ No environment variables required for basic deployment.
 ## Security
 
 See [SECURITY.md](SECURITY.md) for:
+
 - Vulnerability reporting
 - Security policies
 - OWASP Top 10 compliance
